@@ -1,18 +1,431 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Documento de prueba</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dev Log — Proyecto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<!--   <link rel="stylesheet" href="style.css">-->  
+   <style>
+    :root {
+      --bg:         #0a0a0f;
+      --surface:    #111118;
+      --border:     #1e1e2e;
+      --accent:     #7c6af7;
+      --accent2:    #4fd1c5;
+      --text:       #e2e8f0;
+      --muted:      #64748b;
+      --tag-feat:   #1a2e44;
+      --tag-feat-t: #4fd1c5;
+      --tag-fix:    #2d1b1b;
+      --tag-fix-t:  #f87171;
+      --tag-ref:    #1e2a1e;
+      --tag-ref-t:  #86efac;
+      --tag-cfg:    #2a1e2d;
+      --tag-cfg-t:  #d8b4fe;
+      --tag-doc:    #1e1e10;
+      --tag-doc-t:  #fde68a;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── HEADER ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: -0.3px;
+    }
+    .logo-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 2.5s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.4; }
+    }
+    .header-meta {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 72px 2rem 48px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-label {
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #e2e8f0 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+    .hero p {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 480px;
+    }
+    .hero-stats {
+      display: flex;
+      gap: 32px;
+      margin-top: 40px;
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent2);
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* ── LAYOUT ── */
+    .main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 2rem 96px;
+    }
+
+    /* ── FILTERS ── */
+    .filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+    }
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn:hover,
+    .filter-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(124,106,247,0.08);
+    }
+
+    /* ── TIMELINE ── */
+    .timeline {
+      position: relative;
+      padding-left: 28px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 0;
+      width: 1px;
+      background: linear-gradient(to bottom, var(--accent), transparent);
+    }
+
+    /* ── ENTRY ── */
+    .entry {
+      position: relative;
+      margin-bottom: 32px;
+      animation: fadeUp 0.4s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .entry::before {
+      content: '';
+      position: absolute;
+      left: -32px;
+      top: 20px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,106,247,0.15);
+    }
+    .entry-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .entry-card:hover {
+      border-color: rgba(124,106,247,0.4);
+      box-shadow: 0 0 24px rgba(124,106,247,0.06);
+    }
+    .entry-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .entry-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+    .entry-date {
+      font-size: 0.72rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+      white-space: nowrap;
+      padding-top: 3px;
+    }
+    .tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .tag {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .tag-feature  { background: var(--tag-feat); color: var(--tag-feat-t); }
+    .tag-fix      { background: var(--tag-fix);  color: var(--tag-fix-t);  }
+    .tag-refactor { background: var(--tag-ref);  color: var(--tag-ref-t);  }
+    .tag-config   { background: var(--tag-cfg);  color: var(--tag-cfg-t);  }
+    .tag-docs     { background: var(--tag-doc);  color: var(--tag-doc-t);  }
+
+    .entry-desc {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      line-height: 1.7;
+      margin-bottom: 14px;
+    }
+    .entry-files {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .file-chip {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+    }
+    .entry-impact {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: rgba(79,209,197,0.04);
+      border-left: 2px solid var(--accent2);
+      border-radius: 0 6px 6px 0;
+      font-size: 0.82rem;
+      color: #94a3b8;
+    }
+    .entry-impact strong {
+      color: var(--accent2);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      text-align: center;
+      padding: 80px 0;
+      color: var(--muted);
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty p { font-size: 0.88rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 24px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .hero-stats { gap: 20px; }
+      .entry-card { padding: 18px 20px; }
+    }
+  </style>
 </head>
 <body>
-    <p>Este es un documento de prueba.</p>
 
-    <p>
-        Esta será la segunda línea del párrafo, y se mostrará justo después de la primera línea sin ningún salto de línea adicional.
-    </p>
-    <p>
-        Tercera prueba, esta línea se mostrará después de un salto de línea, ya que está en un nuevo párrafo.
-    </p>
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-dot"></span>
+      Dev Log
+    </div>
+    <span class="header-meta">auto-generated · git hooks + ollama</span>
+  </div>
+</header>
+
+<section class="hero">
+  <p class="hero-label">// changelog</p>
+  <h1>Project<br/>Documentation</h1>
+  <p>Registro técnico generado automáticamente a partir de commits. Cada entrada refleja decisiones de diseño, cambios de arquitectura e impacto en el sistema.</p>
+  <div class="hero-stats">
+    <div class="stat">
+      <span class="stat-value" id="stat-commits">0</span>
+      <span class="stat-label">Commits</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="stat-features">0</span>
+      <span class="stat-label">Features</span>
+    </div>
+    <div class="stat">
+      <span class="stat-value" id="stat-fixes">0</span>
+      <span class="stat-label">Fixes</span>
+    </div>
+  </div>
+</section>
+
+<main class="main">
+  <div class="filters">
+    <button class="filter-btn active" onclick="filterEntries('all')">Todos</button>
+    <button class="filter-btn" onclick="filterEntries('feature')">Feature</button>
+    <button class="filter-btn" onclick="filterEntries('fix')">Fix</button>
+    <button class="filter-btn" onclick="filterEntries('refactor')">Refactor</button>
+    <button class="filter-btn" onclick="filterEntries('config')">Config</button>
+    <button class="filter-btn" onclick="filterEntries('docs')">Docs</button>
+  </div>
+
+  <div class="timeline" id="timeline">
+    <!-- ENTRIES_START -->
+    <!-- ENTRIES_END -->
+  </div>
+</main>
+
+<footer>
+  <span id="footer-date"></span> · generado automáticamente con git hooks + ollama
+</footer>
+
+<script>
+  // ── Datos incrustados por el hook ──────────────────────────────
+  const entries = [
+    /* DATA_START */
+    /* DATA_END */
+  ];
+
+  // ── Render ────────────────────────────────────────────────────
+  function tagClass(type) {
+    const map = { feature:'tag-feature', fix:'tag-fix', refactor:'tag-refactor', config:'tag-config', docs:'tag-docs' };
+    return map[type?.toLowerCase()] || 'tag-feature';
+  }
+
+  function renderEntries(filter = 'all') {
+    const timeline = document.getElementById('timeline');
+    const filtered = filter === 'all' ? entries : entries.filter(e => e.type?.toLowerCase() === filter);
+
+    if (filtered.length === 0) {
+      timeline.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><p>No hay entradas en esta categoría.</p></div>`;
+      return;
+    }
+
+    timeline.innerHTML = filtered.map((e, i) => `
+      <div class="entry" style="animation-delay:${i * 0.05}s" data-type="${e.type?.toLowerCase()}">
+        <div class="entry-card">
+          <div class="entry-header">
+            <span class="entry-title">${e.title}</span>
+            <span class="entry-date">${e.date}</span>
+          </div>
+          <div class="tags">
+            <span class="tag ${tagClass(e.type)}">${e.type}</span>
+            ${(e.tags||[]).map(t => `<span class="tag tag-config">${t}</span>`).join('')}
+          </div>
+          <p class="entry-desc">${e.description}</p>
+          ${e.files?.length ? `<div class="entry-files">${e.files.map(f=>`<span class="file-chip">${f}</span>`).join('')}</div>` : ''}
+          ${e.impact ? `<div class="entry-impact"><strong>Impacto</strong>${e.impact}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function filterEntries(type) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    renderEntries(type);
+  }
+
+  // ── Stats ─────────────────────────────────────────────────────
+  function updateStats() {
+    document.getElementById('stat-commits').textContent  = entries.length;
+    document.getElementById('stat-features').textContent = entries.filter(e=>e.type?.toLowerCase()==='feature').length;
+    document.getElementById('stat-fixes').textContent    = entries.filter(e=>e.type?.toLowerCase()==='fix').length;
+    document.getElementById('footer-date').textContent   = entries.length ? entries[0].date : new Date().toLocaleDateString('es-ES');
+  }
+
+  renderEntries();
+  updateStats();
+</script>
 </body>
 </html>

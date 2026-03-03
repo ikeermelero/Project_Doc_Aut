@@ -1,2 +1,5 @@
-# Project_Doc_Aut
-Un Script para ayudar a generar documentación para tu proyecto
+GUIA DE INSTALACIÓN 
+
+Esta guía te servirá para saber instalar esta automatización para tu documentación.
+Para ello usamos la Ollama como generador de la documentación.
+    

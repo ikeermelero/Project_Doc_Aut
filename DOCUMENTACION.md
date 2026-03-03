@@ -1,6 +1,16 @@
 # Documentación del Proyecto
 _Última actualización: 
 
+```markdown
+## 2023-10-27 - Segunda prueba: Actualización del documento de prueba HTML
+**Tipo:** (Docs)
+**Archivos afectados:** `DOCUMENTACION.md`, `prueba.html`
+**Descripción:** Se ha realizado una actualización en el documento de prueba HTML, agregando una línea al contenido del párrafo existente. Esta actualización busca mejorar la legibilidad y funcionalidad del documento.
+**Impacto:** La actualización del documento de prueba HTML permite realizar pruebas o experimentos adicionales en el diseño del HTML.  La creación de este documento de prueba puede servir para probar nuevas ideas y verificar el comportamiento de los elementos HTML.
+
+
+```
+
  ## [FECHA] - Segunda prueba: Actualización del documento de prueba HTML
 **Tipo:** (Docs)
 **Archivos afectados:** `DOCUMENTACION.md`, `prueba.html`
