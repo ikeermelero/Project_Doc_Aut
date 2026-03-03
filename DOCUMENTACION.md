@@ -39,3 +39,5 @@ Este es un paso básico para actualizar la página de prueba, que se puede exten
 **Archivos afectados:** `prueba.html`
 **Descripción:** Se creó un nuevo archivo HTML que contiene una estructura básica de un documento de prueba, incluyendo una declaración DOCTYPE, etiquetas HTML, metadatos, un título y un párrafo de contenido.
 **Impacto:** La creación de este documento de prueba puede servir para realizar pruebas o experimentos de diseño en HTML.
+
+Texto para crear un commit
