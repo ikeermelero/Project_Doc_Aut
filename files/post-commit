@@ -394,6 +394,7 @@ RESPONSE_RAW=$(curl -s --max-time 120 \
 
 # Extraer respuesta
 OLLAMA_RESPONSE=$(echo "$RESPONSE_RAW" | python3 -c "
+
 import json, sys
 try:
     data = json.load(sys.stdin)
