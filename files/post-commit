@@ -1,0 +1,517 @@
+#!/bin/bash
+
+# ============================================================
+#  git-ollama-docs — post-commit hook
+#  Documenta automáticamente tus commits con Ollama phi3
+# ============================================================
+
+RESET="\033[0m"
+BOLD="\033[1m"
+DIM="\033[2m"
+CYAN="\033[36m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+RED="\033[31m"
+BLUE="\033[34m"
+MAGENTA="\033[35m"
+
+OLLAMA_MODEL="phi3"
+OLLAMA_URL="http://localhost:11434/api/generate"
+DOCS_PATH="docs/DOCUMENTACION.html"
+
+# ── Banner ──────────────────────────────────────────────────
+echo ""
+echo -e "${CYAN}${BOLD}╔══════════════════════════════════════════╗${RESET}"
+echo -e "${CYAN}${BOLD}║        🤖  git-ollama-docs               ║${RESET}"
+echo -e "${CYAN}${BOLD}║   Documentación automática con Ollama    ║${RESET}"
+echo -e "${CYAN}${BOLD}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+
+# ── 1. Recoger info del commit ───────────────────────────────
+echo -e "${BLUE}▶ Leyendo información del commit...${RESET}"
+
+COMMIT_HASH=$(git rev-parse --short HEAD)
+COMMIT_MSG=$(git log -1 --pretty=%B | head -5)
+COMMIT_AUTHOR=$(git log -1 --pretty="%an <%ae>")
+COMMIT_DATE=$(git log -1 --pretty="%ad" --date=format:"%d/%m/%Y %H:%M")
+COMMIT_FILES=$(git diff-tree --no-commit-id -r --name-only HEAD | head -20 | tr '\n' ', ' | sed 's/,$//')
+COMMIT_STATS=$(git diff-tree --no-commit-id -r --stat HEAD | tail -1)
+PROJECT_NAME=$(basename "$(git rev-parse --show-toplevel)")
+
+echo -e "  ${DIM}Hash:${RESET}    ${BOLD}${COMMIT_HASH}${RESET}"
+echo -e "  ${DIM}Autor:${RESET}   ${COMMIT_AUTHOR}"
+echo -e "  ${DIM}Fecha:${RESET}   ${COMMIT_DATE}"
+echo -e "  ${DIM}Mensaje:${RESET} ${COMMIT_MSG}"
+echo -e "  ${DIM}Archivos:${RESET} ${COMMIT_FILES}"
+echo ""
+
+# ── 2. Preguntar al usuario ──────────────────────────────────
+echo -e "${YELLOW}${BOLD}¿Deseas documentar este commit en ${DOCS_PATH}?${RESET}"
+echo -e "${DIM}  [s] Sí, generar documentación   [n] No, salir${RESET}"
+echo -ne "${CYAN}  → ${RESET}"
+read -r RESPUESTA </dev/tty
+
+if [[ ! "$RESPUESTA" =~ ^[sS]$ ]]; then
+    echo -e "${DIM}  Saltando documentación. ¡Hasta el próximo commit!${RESET}"
+    echo ""
+    exit 0
+fi
+
+echo ""
+
+# ── 3. Verificar que Ollama está activo ──────────────────────
+echo -e "${BLUE}▶ Verificando conexión con Ollama (${OLLAMA_MODEL})...${RESET}"
+
+if ! curl -s --max-time 3 "${OLLAMA_URL%/generate}" > /dev/null 2>&1; then
+    echo -e "${RED}  ✗ No se puede conectar con Ollama en ${OLLAMA_URL}${RESET}"
+    echo -e "${DIM}  Asegúrate de que Ollama está corriendo: ollama serve${RESET}"
+    exit 1
+fi
+
+echo -e "${GREEN}  ✓ Ollama disponible${RESET}"
+echo ""
+
+# ── 4. Crear docs/ y DOCUMENTACION.html si no existen ───────
+if [ ! -f "${DOCS_PATH}" ]; then
+    echo -e "${BLUE}▶ Creando estructura docs/DOCUMENTACION.html...${RESET}"
+    mkdir -p docs
+
+    cat > "${DOCS_PATH}" << 'HTML_TEMPLATE'
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Documentación del Proyecto</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --border: #1e2d40;
+      --accent: #00d4ff;
+      --accent2: #7c3aed;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --success: #10b981;
+      --mono: 'JetBrains Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      line-height: 1.7;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0a0e1a 0%, #111827 50%, #0d1b2e 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 3rem 2rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -10%;
+      width: 60%;
+      height: 200%;
+      background: radial-gradient(ellipse, rgba(0,212,255,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: -50%;
+      right: -10%;
+      width: 50%;
+      height: 200%;
+      background: radial-gradient(ellipse, rgba(124,58,237,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .header-inner { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(0,212,255,0.1);
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 2rem;
+      padding: 0.3rem 1rem;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--accent);
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.05em;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.1;
+      background: linear-gradient(135deg, var(--text) 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.75rem;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 1rem;
+      font-family: var(--mono);
+    }
+
+    main { max-width: 900px; margin: 0 auto; padding: 2rem; }
+
+    #log-container { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .entry {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+      animation: slideIn 0.4s ease both;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .entry:hover { border-color: rgba(0,212,255,0.3); transform: translateY(-2px); }
+
+    .entry-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      flex-wrap: wrap;
+    }
+
+    .commit-hash {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      background: rgba(0,212,255,0.12);
+      color: var(--accent);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid rgba(0,212,255,0.2);
+    }
+
+    .commit-title { font-weight: 700; font-size: 1rem; flex: 1; min-width: 200px; }
+
+    .commit-meta {
+      display: flex;
+      gap: 1.5rem;
+      padding: 0.75rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .meta-item { font-size: 0.8rem; color: var(--muted); font-family: var(--mono); }
+    .meta-item span { color: var(--text); }
+
+    .entry-body { padding: 1.5rem; }
+
+    .entry-body h3 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent2);
+      margin-bottom: 0.75rem;
+    }
+
+    .doc-content { color: var(--text); font-size: 0.95rem; line-height: 1.8; }
+
+    .doc-content h1, .doc-content h2, .doc-content h3 {
+      color: var(--accent);
+      margin: 1rem 0 0.5rem;
+      font-family: var(--sans);
+    }
+
+    .doc-content code {
+      font-family: var(--mono);
+      background: rgba(0,212,255,0.08);
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.85em;
+      color: var(--accent);
+    }
+
+    .doc-content pre {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+    }
+
+    .doc-content ul, .doc-content ol { padding-left: 1.5rem; }
+
+    .doc-content strong { color: var(--accent2); }
+
+    .files-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.75rem;
+    }
+
+    .file-tag {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      background: rgba(124,58,237,0.12);
+      color: #a78bfa;
+      border: 1px solid rgba(124,58,237,0.25);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--muted);
+    }
+
+    .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty-state p { font-family: var(--mono); font-size: 0.9rem; }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-family: var(--mono);
+      border-top: 1px solid var(--border);
+      margin-top: 3rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="logo-badge">⚡ git-ollama-docs</div>
+      <h1 id="project-title">Documentación del Proyecto</h1>
+      <p class="subtitle" id="project-subtitle">Generada automáticamente con Ollama · phi3</p>
+    </div>
+  </header>
+
+  <main>
+    <div id="log-container">
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <p>Aún no hay entradas. Haz un commit para generar documentación.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Generado por git-ollama-docs · <span id="footer-date"></span>
+  </footer>
+
+  <script>
+    document.getElementById('footer-date').textContent = new Date().toLocaleDateString('es-ES');
+  </script>
+</body>
+</html>
+HTML_TEMPLATE
+
+    echo -e "${GREEN}  ✓ Archivo HTML creado en ${DOCS_PATH}${RESET}"
+else
+    echo -e "${GREEN}  ✓ ${DOCS_PATH} ya existe${RESET}"
+fi
+
+echo ""
+
+# ── 5. Construir prompt optimizado para phi3 ─────────────────
+echo -e "${BLUE}▶ Preparando prompt para phi3...${RESET}"
+
+PROMPT="Eres un asistente técnico que documenta cambios en proyectos de software. Responde SIEMPRE en español. Sé conciso y directo.
+
+Documenta este commit en formato HTML (solo el contenido interno, sin etiquetas html/head/body):
+
+Proyecto: ${PROJECT_NAME}
+Commit: ${COMMIT_HASH}
+Mensaje: ${COMMIT_MSG}
+Archivos modificados: ${COMMIT_FILES}
+Estadísticas: ${COMMIT_STATS}
+
+Genera una sección de documentación con:
+1. Un resumen del cambio (2-3 frases)
+2. Qué se modificó y por qué (lista breve)
+3. Impacto técnico (si aplica)
+
+Usa etiquetas HTML simples: <p>, <ul>, <li>, <strong>, <code>. Sin markdown."
+
+echo -e "${GREEN}  ✓ Prompt preparado (optimizado para velocidad)${RESET}"
+echo ""
+
+# ── 6. Llamar a Ollama con streaming ─────────────────────────
+echo -e "${BLUE}▶ Enviando a Ollama ${BOLD}${OLLAMA_MODEL}${RESET}${BLUE}...${RESET}"
+echo -e "${DIM}  (Generando documentación, puede tardar unos segundos)${RESET}"
+echo ""
+echo -e "${MAGENTA}┌─ Respuesta de Ollama ─────────────────────────────${RESET}"
+
+OLLAMA_RESPONSE=""
+SPINNER_CHARS="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+SPINNER_IDX=0
+
+# Llamada a Ollama con parámetros optimizados para velocidad
+RESPONSE_RAW=$(curl -s --max-time 120 \
+  -X POST "${OLLAMA_URL}" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"model\": \"${OLLAMA_MODEL}\",
+    \"prompt\": $(echo "$PROMPT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'),
+    \"stream\": false,
+    \"options\": {
+      \"num_predict\": 400,
+      \"temperature\": 0.3,
+      \"top_p\": 0.85,
+      \"top_k\": 20,
+      \"repeat_penalty\": 1.1,
+      \"num_ctx\": 1024
+    }
+  }")
+
+# Extraer respuesta
+OLLAMA_RESPONSE=$(echo "$RESPONSE_RAW" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    print(data.get('response', ''))
+except:
+    print('')
+" 2>/dev/null)
+
+if [ -z "$OLLAMA_RESPONSE" ]; then
+    echo -e "${RED}  ✗ Error: No se recibió respuesta de Ollama${RESET}"
+    echo -e "${DIM}  Respuesta raw: ${RESPONSE_RAW:0:200}${RESET}"
+    exit 1
+fi
+
+echo "$OLLAMA_RESPONSE" | fold -s -w 70 | sed 's/^/  /'
+echo -e "${MAGENTA}└───────────────────────────────────────────────────${RESET}"
+echo ""
+
+# ── 7. Construir entrada HTML ─────────────────────────────────
+echo -e "${BLUE}▶ Insertando entrada en ${DOCS_PATH}...${RESET}"
+
+FILES_TAGS=""
+IFS=',' read -ra FILES_ARR <<< "$COMMIT_FILES"
+for f in "${FILES_ARR[@]}"; do
+    f_trim=$(echo "$f" | xargs)
+    [ -n "$f_trim" ] && FILES_TAGS+="<span class=\"file-tag\">${f_trim}</span>"
+done
+
+NEW_ENTRY="    <div class=\"entry\">
+      <div class=\"entry-header\">
+        <span class=\"commit-hash\">${COMMIT_HASH}</span>
+        <span class=\"commit-title\">${COMMIT_MSG}</span>
+      </div>
+      <div class=\"commit-meta\">
+        <span class=\"meta-item\">👤 Autor: <span>${COMMIT_AUTHOR}</span></span>
+        <span class=\"meta-item\">📅 Fecha: <span>${COMMIT_DATE}</span></span>
+        <span class=\"meta-item\">📊 <span>${COMMIT_STATS}</span></span>
+      </div>
+      <div class=\"entry-body\">
+        <h3>📂 Archivos modificados</h3>
+        <div class=\"files-list\">${FILES_TAGS}</div>
+        <br>
+        <h3>🤖 Análisis generado por phi3</h3>
+        <div class=\"doc-content\">
+          ${OLLAMA_RESPONSE}
+        </div>
+      </div>
+    </div>"
+
+# Reemplazar el empty-state si existe, o añadir antes de </div> del log-container
+if grep -q "empty-state" "${DOCS_PATH}"; then
+    # Eliminar el empty-state y añadir la entrada
+    python3 - << PYEOF
+import re
+
+with open('${DOCS_PATH}', 'r', encoding='utf-8') as f:
+    content = f.read()
+
+# Eliminar empty-state
+content = re.sub(r'\s*<div class="empty-state">.*?</div>', '', content, flags=re.DOTALL)
+
+# Insertar nueva entrada al inicio del log-container
+new_entry = """${NEW_ENTRY}"""
+content = content.replace('<div id="log-container">', '<div id="log-container">\n' + new_entry)
+
+with open('${DOCS_PATH}', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("ok")
+PYEOF
+else
+    # Añadir al inicio del log-container
+    python3 - << PYEOF
+import re
+
+with open('${DOCS_PATH}', 'r', encoding='utf-8') as f:
+    content = f.read()
+
+new_entry = """${NEW_ENTRY}"""
+content = content.replace('<div id="log-container">', '<div id="log-container">\n' + new_entry)
+
+with open('${DOCS_PATH}', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("ok")
+PYEOF
+fi
+
+# Actualizar título del proyecto si es la primera vez
+python3 - << PYEOF 2>/dev/null
+with open('${DOCS_PATH}', 'r', encoding='utf-8') as f:
+    content = f.read()
+
+content = content.replace(
+    '<h1 id="project-title">Documentación del Proyecto</h1>',
+    '<h1 id="project-title">Documentación · ${PROJECT_NAME}</h1>'
+)
+content = content.replace(
+    "document.getElementById('footer-date').textContent = new Date().toLocaleDateString('es-ES');",
+    "document.getElementById('footer-date').textContent = new Date().toLocaleDateString('es-ES');"
+)
+
+with open('${DOCS_PATH}', 'w', encoding='utf-8') as f:
+    f.write(content)
+PYEOF
+
+# Añadir el HTML al staging si no está tracked
+git add "${DOCS_PATH}" 2>/dev/null
+
+echo -e "${GREEN}  ✓ Documentación actualizada${RESET}"
+echo ""
+
+# ── 8. Resumen final ─────────────────────────────────────────
+echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════╗${RESET}"
+echo -e "${GREEN}${BOLD}║  ✅  ¡Documentación generada con éxito!  ║${RESET}"
+echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════╝${RESET}"
+echo ""
+echo -e "  📄 Archivo: ${BOLD}${DOCS_PATH}${RESET}"
+echo -e "  🔖 Commit:  ${BOLD}${COMMIT_HASH}${RESET} — ${COMMIT_MSG}"
+echo -e "  🤖 Modelo:  ${BOLD}${OLLAMA_MODEL}${RESET}"
+echo ""
