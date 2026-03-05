@@ -344,22 +344,14 @@ echo ""
 # ── 5. Construir prompt optimizado para phi3 ─────────────────
 echo -e "${BLUE}▶ Preparando prompt para phi3...${RESET}"
 
-PROMPT="Eres un asistente técnico que documenta cambios en proyectos de software. Responde SIEMPRE en español. Sé conciso y directo.
+PROMPT="Escribe SOLO HTML. Sin JSON. Sin markdown. Sin bloques de código. Sin explicaciones. Solo etiquetas HTML directamente.
 
-Documenta este commit en formato HTML (solo el contenido interno, sin etiquetas html/head/body):
+Proyecto: ${PROJECT_NAME}. Commit ${COMMIT_HASH}: ${COMMIT_MSG}. Archivos: ${COMMIT_FILES}. Stats: ${COMMIT_STATS}.
 
-Proyecto: ${PROJECT_NAME}
-Commit: ${COMMIT_HASH}
-Mensaje: ${COMMIT_MSG}
-Archivos modificados: ${COMMIT_FILES}
-Estadísticas: ${COMMIT_STATS}
-
-Genera una sección de documentación con:
-1. Un resumen del cambio (2-3 frases)
-2. Qué se modificó y por qué (lista breve)
-3. Impacto técnico (si aplica)
-
-Usa etiquetas HTML simples: <p>, <ul>, <li>, <strong>, <code>. Sin markdown."
+Responde únicamente con esto (en español, rellenando el contenido):
+<p><strong>Resumen:</strong> [2 frases describiendo el cambio]</p>
+<ul><li>[archivo o cambio principal]</li><li>[otro cambio]</li></ul>
+<p><strong>Impacto:</strong> [una frase]</p>"
 
 echo -e "${GREEN}  ✓ Prompt preparado (optimizado para velocidad)${RESET}"
 echo ""
@@ -394,7 +386,6 @@ RESPONSE_RAW=$(curl -s --max-time 120 \
 
 # Extraer respuesta
 OLLAMA_RESPONSE=$(echo "$RESPONSE_RAW" | python3 -c "
-
 import json, sys
 try:
     data = json.load(sys.stdin)
@@ -408,6 +399,46 @@ if [ -z "$OLLAMA_RESPONSE" ]; then
     echo -e "${DIM}  Respuesta raw: ${RESPONSE_RAW:0:200}${RESET}"
     exit 1
 fi
+
+# Limpiar respuesta: eliminar bloques ```html ... ```, ```json, JSON puro, etc.
+OLLAMA_RESPONSE=$(echo "$OLLAMA_RESPONSE" | python3 -c "
+import sys, re, json
+
+text = sys.stdin.read().strip()
+
+# Quitar bloques de código: \`\`\`html ... \`\`\`  o  \`\`\`json ... \`\`\`
+text = re.sub(r'\`\`\`[a-zA-Z]*\n?', '', text).strip()
+
+# Si es JSON puro, convertirlo a HTML básico
+try:
+    data = json.loads(text)
+    parts = []
+    if 'abstract' in data or 'resumen' in data:
+        val = data.get('abstract') or data.get('resumen','')
+        parts.append(f'<p><strong>Resumen:</strong> {val}</p>')
+    if 'modified_files' in data:
+        parts.append('<ul>')
+        for f in data['modified_files']:
+            fname = f.get('file','')
+            changes = ' '.join(f.get('changes', []))
+            parts.append(f'<li><code>{fname}</code>: {changes}</li>')
+        parts.append('</ul>')
+    if 'impact_technical' in data:
+        parts.append('<p><strong>Impacto técnico:</strong></p><ul>')
+        for i in data['impact_technical']:
+            parts.append(f'<li>{i.get(\"description\",\"\")}</li>')
+        parts.append('</ul>')
+    text = '\n'.join(parts) if parts else '<p>' + str(data) + '</p>'
+except:
+    pass
+
+# Si no contiene ninguna etiqueta HTML, envolver en párrafo
+if '<' not in text:
+    text = '<p>' + text.replace('\n\n', '</p><p>') + '</p>'
+
+print(text)
+")
+echo -e "${GREEN}  ✓ Respuesta procesada${RESET}"
 
 echo "$OLLAMA_RESPONSE" | fold -s -w 70 | sed 's/^/  /'
 echo -e "${MAGENTA}└───────────────────────────────────────────────────${RESET}"
